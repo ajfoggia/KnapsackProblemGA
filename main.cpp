@@ -1,3 +1,13 @@
+//Alex Foggia
+//This program uses a genetic algorithm to find near optimal solutions to the knapsack problem.
+//All chromosomes are randomly generated for the first generation and are represented by a binary string.
+//A 1 in the string signifies that item is included in the knapsack. While a 0 means the item is excluded.
+//The items values and weights are also randomly generated, but remain constant after that for the duration of the program.
+//For the selection process: Tournment selection.
+//For the crossover process: a random crossover point is picked in the chromosome and then crossover is performed.
+//For the mutation process: There is a 5% chance of mutation in the chromosome, if mutation is done then the bit in the
+//string is flipped.
+
 #include <iostream>
 #include <cstring>
 #include <string>
@@ -7,10 +17,10 @@
 
 using std::string;
 
-#define POP_SIZE 10
-#define CHROMOSOME_LENGTH 10
-#define MAX_GENERATIONS 1
-#define KNAPSACK_WEIGHT_CAP 25
+#define POP_SIZE 10  //Max population size.
+#define CHROMOSOME_LENGTH 10  //Max chromosome length.
+#define MAX_GENERATIONS 1  //Max number of generations.
+#define KNAPSACK_WEIGHT_CAP 25  //The weight capacity of the knapsack.
 
 //This is the structure of our chromosome.
 struct chromosome
@@ -25,12 +35,11 @@ struct chromosome
 
 ///////////////////////////////////////////PROTOTYPES///////////////////////////////////////
 
-void printPopulation(chromosome* Pop, int generation);
-int calculateFitness(string &chrom_bits, int Value[], int Weight[], int chrom_Num);
 string tournamentSelection(chromosome* Population);
-void Mutate(string &chrom_bits);
 string Crossover(string &firstParent, string &secondParent);
-
+int calculateFitness(string &chrom_bits, int Value[], int Weight[], int chrom_Num);
+void Mutate(string &chrom_bits);
+void printPopulation(chromosome* Pop, int generation);
 
 //////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////MAIN/////////////////////////////////////////
@@ -169,26 +178,6 @@ string Crossover(string &firstParent, string &secondParent)
     return tempChromosome;
 }
 
-//This function mutates a chromosome (dependent on the mutation rate).
-void Mutate(string &chrom_bits)
-{
-    //For however long a chromosome is, mutate the bit if the 5% mutation rate is satisfied.
-    for (int i = 0; i < CHROMOSOME_LENGTH; i++)
-    {
-        if (rand()% 100 < 5)
-        {
-            if (chrom_bits[i] == '0')
-            {
-                chrom_bits[i] = '1';
-            }
-            else
-            {
-                chrom_bits[i] = '0';
-            }
-        }
-    }
-}
-
 //Function that performs a tournament selection on the current population.
 //It grabs two chromosomes at random to be put into a tournament.
 //The winner (the one with the higher fitness) goes on to the next generation.
@@ -244,6 +233,26 @@ int calculateFitness(string &chrom_bits, int Value[], int Weight[], int chrom_Nu
     }
 
     return currentValue;
+}
+
+//This function mutates a chromosome (dependent on the mutation rate).
+void Mutate(string &chrom_bits)
+{
+    //For however long a chromosome is, mutate the bit if the 5% mutation rate is satisfied.
+    for (int i = 0; i < CHROMOSOME_LENGTH; i++)
+    {
+        if (rand()% 100 < 5)
+        {
+            if (chrom_bits[i] == '0')
+            {
+                chrom_bits[i] = '1';
+            }
+            else
+            {
+                chrom_bits[i] = '0';
+            }
+        }
+    }
 }
 
 //Function that prints out the population of each generation.
