@@ -25,21 +25,21 @@ using std::string;
 //This is the structure of our chromosome.
 struct chromosome
 {
-    string chrom_bits;
+    string chrom_bits;  //Holds the binary string of item selections for the candidate solution.
 
-    int fitness;
+    int fitness;  //Holds the fitness of the current chromosome.
 
-    chromosome(): chrom_bits(""), fitness(0){};  //initialize each chromosome.
-    chromosome(string items, int fit){};
+    chromosome(): chrom_bits(""), fitness(0){};  //This initializes a chromosome.
 };
 
 ///////////////////////////////////////////PROTOTYPES///////////////////////////////////////
 
 string tournamentSelection(chromosome* Population);
 string Crossover(string &firstParent, string &secondParent);
-int calculateFitness(string &chrom_bits, int Value[], int Weight[], int chrom_Num);
+int calculateChromWeight(string &chrom_bits, int Weight[]);
+int calculateFitness(string &chrom_bits, int Value[]);
 void Mutate(string &chrom_bits);
-void generateChromosomes(chromosome* Population);
+void generateChromosomes(chromosome* Population, int count);
 void generateItems(int Value[], int Weight[]);
 void printPopulation(chromosome* Population, int generation);
 
@@ -54,11 +54,15 @@ int main()
     int gen = 0;  //Keeps track of the current generation being generated.
     int values[CHROMOSOME_LENGTH];  //Array that holds the values of each item.
     int weights[CHROMOSOME_LENGTH];  //Array that holds the weights of each item.
+    int chrom_Weight = 0;  //Holds the weight of the current chromosome. Used to check if the chromosome has exceeded the weight constraint.
 
     srand((int)time(NULL));  //Seed the random number generator.
 
     //Create the first population with random chromosomes.
-    generateChromosomes(Population);
+    for (int i = 0; i < POP_SIZE; i++)
+    {
+        generateChromosomes(Population, i);
+    }
 
     //Generate the values and weights for the items.
     generateItems(values, weights);
@@ -66,7 +70,20 @@ int main()
     //Figure out the fitness of each random chromosome now that we have the items weights and values.
     for (int i = 0; i < POP_SIZE; i++)
     {
-        Population[i].fitness = calculateFitness(Population[i].chrom_bits, values, weights, i);
+        //First we have to figure out if our chromosome is valid.
+        chrom_Weight = calculateChromWeight(Population[i].chrom_bits, weights);
+        //As long as the chromosome violates the knapsack weight cap, throw it out and generate a new one.
+        while (chrom_Weight > KNAPSACK_WEIGHT_CAP)
+        {
+            std::cout << "\nCHROMOSOME " << i << " MUST BE EXCLUDED. IT EXCEEDS WEIGHT CAP!\n";
+            std::cout << "\nWeight was: " << chrom_Weight << "\n";
+            Population[i].chrom_bits = "";
+            generateChromosomes(Population, i);
+            std::cout << "\nCHROMOSOME " << i << " was changed to: " << Population[i].chrom_bits << "\n";
+            chrom_Weight = calculateChromWeight(Population[i].chrom_bits, weights);
+        }
+        //Now we can calculate how good our valid chromosome is.
+        Population[i].fitness = calculateFitness(Population[i].chrom_bits, values);
     }
 
     //Print the first generation.
@@ -84,14 +101,14 @@ int main()
             //Grab the first parent winner.
             string firstParent = tournamentSelection(Population);
             //Calculate the fitness of the first parent.
-            int firstParentFitness = calculateFitness(firstParent, values, weights, j);
+            int firstParentFitness = calculateFitness(firstParent, values);
             std::cout << "\nFIRST TOURNAMENT!";
             std::cout << "\nFirst tournament winner: " << firstParent << " with a fitness of " << firstParentFitness;
 
             //Now grab the second parent winner.
             string secondParent = tournamentSelection(Population);
             //Calculate the fitness of the second parent.
-            int secondParentFitness = calculateFitness(secondParent, values, weights, j);
+            int secondParentFitness = calculateFitness(secondParent, values);
             std::cout << "\nSECOND TOURNAMENT!";
             std::cout << "\n\nSecond tournament winner: " << secondParent << " with a fitness of " << secondParentFitness;
 
@@ -127,13 +144,13 @@ int main()
             Mutate(Offspring);
             std::cout << "Mutated first offspring: " << Offspring;
             //Calculate the fitness of the offspring.
-            int offspringFitness = calculateFitness(Offspring, values, weights, j);
+            int offspringFitness = calculateFitness(Offspring, values);
 
             j++;
             //Now add the offspring to the new population.
             temp_pop[j].chrom_bits = Offspring;
             temp_pop[j].fitness = offspringFitness;
-            std::cout << "\nTemporary population chrom " << j << ": " << temp_pop[j].chrom_bits << "\nFitness: " << temp_pop[j].fitness;
+            std::cout << "\nTemporary population chrom " << j << ": " << temp_pop[j].chrom_bits << "\nFitness: " << temp_pop[j].fitness << "\n";
         }
 
         //Move the temporary population into the main population.
@@ -166,7 +183,7 @@ string Crossover(string &firstParent, string &secondParent)
     return tempChromosome;
 }
 
-//Function that performs a tournament selection on the current population.
+//This function performs a tournament selection on the current population.
 //It grabs two chromosomes at random to be put into a tournament.
 //The winner (the one with the higher fitness) goes on to the next generation.
 string tournamentSelection(chromosome* Population)
@@ -196,16 +213,15 @@ string tournamentSelection(chromosome* Population)
     }
 }
 
-int calculateFitness(string &chrom_bits, int Value[], int Weight[], int chrom_Num)
+//This function calculates the weight of a chromosome.
+int calculateChromWeight(string &chrom_bits, int Weight[])
 {
     int currentWeight = 0;  //Keeps track of the current weight of the chromosome to compare with the knapsack cap.
-    int currentValue = 0;  //Keeps track of the current value of the chromosome.
 
     for (int count = 0; count < CHROMOSOME_LENGTH; count++)
     {
         if (chrom_bits.at(count) == '1')
         {
-            currentValue += Value[count];
             currentWeight += Weight[count];
         }
         else
@@ -214,9 +230,24 @@ int calculateFitness(string &chrom_bits, int Value[], int Weight[], int chrom_Nu
         }
     }
 
-    if (currentWeight > KNAPSACK_WEIGHT_CAP)
+    return currentWeight;
+}
+
+//This function calculates the fitness of a chromosome.
+int calculateFitness(string &chrom_bits, int Value[])
+{
+    int currentValue = 0;  //Keeps track of the current value of the chromosome.
+
+    for (int count = 0; count < CHROMOSOME_LENGTH; count++)
     {
-        std::cout << "\nCHROMOSOME " << chrom_Num << " MUST BE EXCLUDED. IT EXCEEDS WEIGHT CAP!\n";
+        if (chrom_bits.at(count) == '1')
+        {
+            currentValue += Value[count];
+        }
+        else
+        {
+            //Do nothing because the item is not added.
+        }
     }
 
     return currentValue;
@@ -242,26 +273,23 @@ void Mutate(string &chrom_bits)
     }
 }
 
-//Function that randomly generates the first chromosome strings.
-void generateChromosomes(chromosome* Population)
+//This function randomly generates the first chromosome strings.
+void generateChromosomes(chromosome* Population, int count)
 {
-    for (int i = 0; i < POP_SIZE; i++)
+    for (int j = 0; j < CHROMOSOME_LENGTH; j++)
     {
-        for (int j = 0; j < CHROMOSOME_LENGTH; j++)
+        if (rand()% 2 == 0)
         {
-            if (rand()% 2 == 0)
-            {
-                Population[i].chrom_bits += "0";
-            }
-            else
-            {
-                Population[i].chrom_bits += "1";
-            }
+            Population[count].chrom_bits += "0";
+        }
+        else
+        {
+            Population[count].chrom_bits += "1";
         }
     }
 }
 
-//Function that randomly generates the items with values and weights.
+//This function randomly generates the items with values and weights.
 void generateItems(int Value[], int Weight[])
 {
     for (int j = 0; j < CHROMOSOME_LENGTH; j++)
@@ -274,7 +302,7 @@ void generateItems(int Value[], int Weight[])
     }
 }
 
-//Function that prints out the population of each generation.
+//This function prints out the population of each generation.
 void printPopulation(chromosome* Population, int generation)
 {
     std::cout << "\n\nGENERATION " << generation << "\n";
